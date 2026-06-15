@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bermex Dashboard</title>
+  <style>
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#09111d;color:#e5e7eb}
+    .wrap{max-width:1300px;margin:0 auto;padding:24px}
+    .header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:20px}
+    h1{margin:0;font-size:34px}.sub{color:#94a3b8;margin-top:6px;line-height:1.4}
+    .badge{background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;font-weight:700;font-size:13px}
+    .grid{display:grid;gap:16px}.uploads{grid-template-columns:repeat(3,1fr);margin-bottom:16px}.cards{grid-template-columns:repeat(6,1fr);margin-bottom:16px}.two{grid-template-columns:1.4fr 1fr}
+    .card{background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px;box-shadow:0 12px 28px rgba(0,0,0,.25)}
+    .label{font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}.value{font-size:32px;font-weight:700;margin-bottom:8px}.hint{font-size:13px;color:#94a3b8;line-height:1.4}
+    input,button{width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.08);padding:10px;background:#0f172a;color:#e5e7eb}
+    button{cursor:pointer;background:#38bdf8;color:#06111f;border:0;font-weight:700}.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.row button{width:auto}
+    table{width:100%;border-collapse:collapse;margin-top:8px}th,td{text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}th{color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.8px}
+    .status{background:#0f172a;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;color:#94a3b8;margin-bottom:16px}
+    .pill{display:inline-block;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}.good{background:rgba(34,197,94,.15);color:#86efac}.warn{background:rgba(245,158,11,.15);color:#fcd34d}.empty{background:rgba(148,163,184,.13);color:#cbd5e1}
+    @media(max-width:1000px){.uploads,.cards,.two{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>Bermex Dashboard</h1>
+      <div class="sub">Production repository clean start. CSV upload mode now. UtiliSphere API later.</div>
+    </div>
+    <div class="badge">Azure Static Web Apps</div>
+  </div>
+
+  <div class="grid uploads">
+    <div class="card"><div class="label">Completed Tickets CSV</div><input type="file" id="completedFile" accept=".csv" /></div>
+    <div class="card"><div class="label">Open Queue CSV</div><input type="file" id="openFile" accept=".csv" /></div>
+    <div class="card"><div class="label">Timeclock CSV</div><input type="file" id="timeFile" accept=".csv" /></div>
+  </div>
+
+  <div class="row">
+    <button onclick="loadDashboard()">Refresh</button>
+    <button onclick="testApi()">Test API</button>
+    <button onclick="clearData()">Clear Data</button>
+  </div>
+  <div class="status" id="status">Ready.</div>
+
+  <div class="grid cards">
+    <div class="card"><div class="label">Completed Locates</div><div class="value" id="completed">0</div><div class="hint">Unique completed tickets</div></div>
+    <div class="card"><div class="label">Open Queue</div><div class="value" id="open">0</div><div class="hint">Unique open tickets</div></div>
+    <div class="card"><div class="label">Total Hours</div><div class="value" id="hours">0.00</div><div class="hint">Timeclock hours</div></div>
+    <div class="card"><div class="label">TPH</div><div class="value" id="tph">0.00</div><div class="hint">Completed / hours</div></div>
+    <div class="card"><div class="label">COTP</div><div class="value" id="cotp">0.0%</div><div class="hint" id="cotpHint">Completed Late field</div></div>
+    <div class="card"><div class="label">Late / At Risk</div><div class="value" id="lateRisk">0</div><div class="hint">Open ticket risk</div></div>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h2>Team Production</h2>
+      <table><thead><tr><th>Locator</th><th>Hours</th><th>Completed</th><th>TPH</th><th>Open</th><th>Status</th></tr></thead><tbody id="teamRows"></tbody></table>
+    </div>
+    <div class="card">
+      <h2>CAW Compliance</h2>
+      <table>
+        <tr><td>Main size/material</td><td><span class="pill good">Required</span></td></tr>
+        <tr><td>Services labeled SVC</td><td><span class="pill good">Required</span></td></tr>
+        <tr><td>12&quot;+ high profile</td><td><span class="pill warn">Audit</span></td></tr>
+        <tr><td>|.| high-profile marking</td><td><span class="pill warn">Audit</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h2>Ticket Types</h2><table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody id="ticketTypes"></tbody></table></div>
+    <div class="card"><h2>Work Types</h2><table><thead><tr><th>Work Type</th><th>Count</th></tr></thead><tbody id="workTypes"></tbody></table></div>
+  </div>
+</div>
+
+<script>
+async function upload(inputId, type){
+  const file = document.getElementById(inputId).files[0];
+  if(!file) return;
+  setStatus("Uploading " + file.name + "...");
+  const csvText = await file.text();
+  const res = await fetch("/api/uploadData", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({type, filename:file.name, csvText})
+  });
+  const data = await res.json();
+  if(!res.ok){ setStatus("Upload failed: " + (data.error || res.statusText)); return; }
+  apply(data.summary);
+  setStatus(type + " uploaded: " + data.uploadedRows + " rows.");
+}
+document.getElementById("completedFile").addEventListener("change",()=>upload("completedFile","completed"));
+document.getElementById("openFile").addEventListener("change",()=>upload("openFile","open"));
+document.getElementById("timeFile").addEventListener("change",()=>upload("timeFile","time"));
+
+function setStatus(msg){document.getElementById("status").textContent=msg;}
+async function testApi(){
+  try{
+    const res=await fetch("/api/dashboard");
+    const data=await res.json();
+    setStatus("API working: " + data.message);
+    apply(data.summary);
+  }catch(e){setStatus("API failed: " + e.message);}
+}
+async function loadDashboard(){
+  try{
+    const res=await fetch("/api/dashboard");
+    const data=await res.json();
+    if(!res.ok){setStatus(data.error || "Load failed");return;}
+    apply(data.summary); setStatus(data.message || "Loaded.");
+  }catch(e){setStatus("Could not reach Azure Function API.");}
+}
+async function clearData(){
+  const res=await fetch("/api/clearData",{method:"POST"});
+  const data=await res.json();
+  apply(data.summary); setStatus("Data cleared.");
+}
+function apply(s){
+  s = s || empty();
+  document.getElementById("completed").textContent=s.completedCount||0;
+  document.getElementById("open").textContent=s.openCount||0;
+  document.getElementById("hours").textContent=Number(s.totalHours||0).toFixed(2);
+  document.getElementById("tph").textContent=Number(s.tph||0).toFixed(2);
+  document.getElementById("lateRisk").textContent=s.lateRisk||0;
+  document.getElementById("cotp").textContent=(s.cotpAvailable?Number(s.cotp||0).toFixed(1):"0.0")+"%";
+  document.getElementById("cotpHint").textContent=s.cotpAvailable?`${s.onTimeCompleted} on time / ${s.lateCompleted} late`:"Completed Late field";
+  rows("teamRows",(s.locatorRows||[]).map(p=>`<tr><td>${p.name}</td><td>${Number(p.hours||0).toFixed(2)}</td><td>${p.completed||0}</td><td>${Number(p.tph||0).toFixed(2)}</td><td>${p.openQueue||0}</td><td>${status(p)}</td></tr>`));
+  breakdown("ticketTypes",s.ticketTypes||{});
+  breakdown("workTypes",s.workTypes||{});
+}
+function status(p){
+  if(!p.completed && !p.hours) return '<span class="pill empty">No Data</span>';
+  if(p.tph>=1.5) return '<span class="pill good">Solid</span>';
+  return '<span class="pill warn">Watch</span>';
+}
+function rows(id, arr){document.getElementById(id).innerHTML=arr.join("") || '<tr><td colspan="6">No data</td></tr>'}
+function breakdown(id, obj){document.getElementById(id).innerHTML=Object.entries(obj).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join("") || '<tr><td colspan="2">No data</td></tr>'}
+function empty(){return {locatorRows:[]}}
+loadDashboard();
+</script>
+</body>
+</html>
