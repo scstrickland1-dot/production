@@ -2,21 +2,41 @@
   "platform": {
     "apiRuntime": "node:20"
   },
-  "navigationFallback": {
-    "rewrite": "/index.html"
-  },
   "routes": [
+    {
+      "route": "/login",
+      "rewrite": "/.auth/login/aad"
+    },
+    {
+      "route": "/logout",
+      "redirect": "/.auth/logout"
+    },
     {
       "route": "/api/*",
       "allowedRoles": [
-        "anonymous"
+        "authenticated"
       ]
     },
     {
       "route": "/*",
       "allowedRoles": [
-        "anonymous"
+        "authenticated"
       ]
     }
-  ]
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html"
+  },
+  "responseOverrides": {
+    "401": {
+      "statusCode": 302,
+      "redirect": "/login"
+    }
+  },
+  "globalHeaders": {
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin"
+  }
 }

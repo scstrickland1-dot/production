@@ -5,140 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bermex Dashboard</title>
   <style>
-    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#09111d;color:#e5e7eb}
-    .wrap{max-width:1300px;margin:0 auto;padding:24px}
-    .header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:20px}
-    h1{margin:0;font-size:34px}.sub{color:#94a3b8;margin-top:6px;line-height:1.4}
-    .badge{background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;font-weight:700;font-size:13px}
-    .grid{display:grid;gap:16px}.uploads{grid-template-columns:repeat(3,1fr);margin-bottom:16px}.cards{grid-template-columns:repeat(6,1fr);margin-bottom:16px}.two{grid-template-columns:1.4fr 1fr}
-    .card{background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px;box-shadow:0 12px 28px rgba(0,0,0,.25)}
-    .label{font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}.value{font-size:32px;font-weight:700;margin-bottom:8px}.hint{font-size:13px;color:#94a3b8;line-height:1.4}
-    input,button{width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.08);padding:10px;background:#0f172a;color:#e5e7eb}
-    button{cursor:pointer;background:#38bdf8;color:#06111f;border:0;font-weight:700}.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.row button{width:auto}
-    table{width:100%;border-collapse:collapse;margin-top:8px}th,td{text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px}th{color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:.8px}
-    .status{background:#0f172a;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;color:#94a3b8;margin-bottom:16px}
-    .pill{display:inline-block;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}.good{background:rgba(34,197,94,.15);color:#86efac}.warn{background:rgba(245,158,11,.15);color:#fcd34d}.empty{background:rgba(148,163,184,.13);color:#cbd5e1}
-    @media(max-width:1000px){.uploads,.cards,.two{grid-template-columns:1fr}}
+    :root{--bg:#09111d;--panel:#111827;--panel2:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--border:rgba(255,255,255,.08);--accent:#38bdf8;--good:#86efac;--warn:#fcd34d;--bad:#fca5a5;--info:#7dd3fc;--shadow:0 12px 28px rgba(0,0,0,.28);--radius:18px}
+    *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#09111d,#111827);color:var(--text)}
+    .container{max-width:1550px;margin:0 auto;padding:24px}.header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+    h1{margin:0;font-size:34px}h2{margin:0;font-size:18px}.subtitle{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.45;max-width:980px}
+    .badge-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.badge,.user-card,.card{background:rgba(17,24,39,.96);border:1px solid var(--border);box-shadow:var(--shadow)}
+    .badge{border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700}.user-card{min-width:320px;border-radius:16px;padding:12px 14px}.user-card strong{display:block;font-size:14px;margin-bottom:4px}.user-card span{display:block;color:var(--muted);font-size:12px;line-height:1.45}
+    .grid{display:grid;gap:18px}.uploads{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:18px}.cards{grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:18px}.split{grid-template-columns:1.35fr 1fr;margin-bottom:18px}.triple{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:18px}.bottom{grid-template-columns:1.35fr 1fr;margin-bottom:18px}
+    .card{border-radius:var(--radius);padding:18px}.section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.section-title span{color:var(--muted);font-size:13px}.metric-label{font-size:12px;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.8px}.metric-value{font-size:34px;font-weight:700;margin-bottom:8px}.metric-sub{font-size:13px;color:var(--muted);line-height:1.45}
+    .trend,.pill{display:inline-block;border-radius:999px;font-size:12px;font-weight:700}.trend{margin-top:10px;padding:6px 10px}.pill{padding:5px 10px}.up,.pill.good{background:rgba(34,197,94,.14);color:var(--good)}.down,.pill.bad{background:rgba(239,68,68,.14);color:var(--bad)}.mid,.pill.info{background:rgba(56,189,248,.14);color:var(--info)}.warn,.pill.warn{background:rgba(245,158,11,.14);color:var(--warn)}.pill.empty{background:rgba(148,163,184,.13);color:#cbd5e1}
+    input[type=file],input[type=date],input[type=time],select{width:100%;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px}button{border:0;border-radius:12px;padding:10px 13px;font-size:13px;font-weight:700;cursor:pointer;color:#06111f;background:var(--accent)}button.secondary{background:#1f2937;color:var(--text);border:1px solid var(--border)}button.green{background:#22c55e;color:#052e16}button.amber{background:#f59e0b;color:#451a03}.controls,.user-actions{display:flex;gap:10px;flex-wrap:wrap}.controls{margin-top:14px}.user-actions{margin-top:10px}
+    .status{border:1px solid var(--border);border-radius:14px;background:rgba(15,23,42,.85);padding:12px;color:var(--muted);font-size:13px;line-height:1.45;margin-bottom:18px}.upload-box{border:1px dashed rgba(148,163,184,.45);border-radius:16px;padding:14px;background:rgba(31,41,55,.55)}.upload-box label{display:block;font-size:14px;font-weight:700;margin-bottom:8px}.upload-box p,.mapping{color:var(--muted);font-size:12px;line-height:1.45}.upload-box p{margin:0 0 12px}.mapping{margin-top:10px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px;vertical-align:top}th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.8px}
+    .chart-wrap{height:300px;display:flex;align-items:end;gap:10px;padding-top:12px;overflow-x:auto;padding-bottom:4px}.bar-col{flex:0 0 74px;display:flex;flex-direction:column;justify-content:end;align-items:center;height:100%;gap:10px}.bar{width:54px;border-radius:12px 12px 4px 4px;border:1px solid rgba(255,255,255,.08);min-height:12px;background:linear-gradient(180deg,#38bdf8,#2563eb)}.bar-label,.bar-value{font-size:12px;color:var(--muted);text-align:center;max-width:74px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bar-value{color:var(--text);font-weight:700}
+    .focus-list{display:grid;gap:12px}.focus-item{border:1px solid var(--border);border-radius:14px;padding:14px;background:rgba(31,41,55,.7)}.focus-item strong{display:block;margin-bottom:6px;font-size:15px}.focus-item span{color:var(--muted);font-size:13px;line-height:1.45}.hidden{display:none!important}.footer-note{margin-top:18px;color:var(--muted);font-size:12px;line-height:1.5}
+    @media(max-width:1200px){.cards{grid-template-columns:repeat(3,minmax(0,1fr))}.uploads,.split,.triple,.bottom{grid-template-columns:1fr}}@media(max-width:760px){.cards{grid-template-columns:1fr}.metric-value{font-size:28px}h1{font-size:26px}}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="header">
-    <div>
-      <h1>Bermex Dashboard</h1>
-      <div class="sub">Production repository clean start. CSV upload mode now. UtiliSphere API later.</div>
-    </div>
-    <div class="badge">Azure Static Web Apps</div>
-  </div>
-
-  <div class="grid uploads">
-    <div class="card"><div class="label">Completed Tickets CSV</div><input type="file" id="completedFile" accept=".csv" /></div>
-    <div class="card"><div class="label">Open Queue CSV</div><input type="file" id="openFile" accept=".csv" /></div>
-    <div class="card"><div class="label">Timeclock CSV</div><input type="file" id="timeFile" accept=".csv" /></div>
-  </div>
-
-  <div class="row">
-    <button onclick="loadDashboard()">Refresh</button>
-    <button onclick="testApi()">Test API</button>
-    <button onclick="clearData()">Clear Data</button>
-  </div>
-  <div class="status" id="status">Ready.</div>
-
-  <div class="grid cards">
-    <div class="card"><div class="label">Completed Locates</div><div class="value" id="completed">0</div><div class="hint">Unique completed tickets</div></div>
-    <div class="card"><div class="label">Open Queue</div><div class="value" id="open">0</div><div class="hint">Unique open tickets</div></div>
-    <div class="card"><div class="label">Total Hours</div><div class="value" id="hours">0.00</div><div class="hint">Timeclock hours</div></div>
-    <div class="card"><div class="label">TPH</div><div class="value" id="tph">0.00</div><div class="hint">Completed / hours</div></div>
-    <div class="card"><div class="label">COTP</div><div class="value" id="cotp">0.0%</div><div class="hint" id="cotpHint">Completed Late field</div></div>
-    <div class="card"><div class="label">Late / At Risk</div><div class="value" id="lateRisk">0</div><div class="hint">Open ticket risk</div></div>
-  </div>
-
-  <div class="grid two">
-    <div class="card">
-      <h2>Team Production</h2>
-      <table><thead><tr><th>Locator</th><th>Hours</th><th>Completed</th><th>TPH</th><th>Open</th><th>Status</th></tr></thead><tbody id="teamRows"></tbody></table>
-    </div>
-    <div class="card">
-      <h2>CAW Compliance</h2>
-      <table>
-        <tr><td>Main size/material</td><td><span class="pill good">Required</span></td></tr>
-        <tr><td>Services labeled SVC</td><td><span class="pill good">Required</span></td></tr>
-        <tr><td>12&quot;+ high profile</td><td><span class="pill warn">Audit</span></td></tr>
-        <tr><td>|.| high-profile marking</td><td><span class="pill warn">Audit</span></td></tr>
-      </table>
-    </div>
-  </div>
-
-  <div class="grid two" style="margin-top:16px">
-    <div class="card"><h2>Ticket Types</h2><table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody id="ticketTypes"></tbody></table></div>
-    <div class="card"><h2>Work Types</h2><table><thead><tr><th>Work Type</th><th>Count</th></tr></thead><tbody id="workTypes"></tbody></table></div>
-  </div>
+<div class="container">
+  <div class="header"><div><h1>Bermex Dashboard</h1><p class="subtitle">Microsoft login protected dashboard for Bermex / Central Alabama Water. Supervisors see the full team. Locators only see their assigned data when their email is mapped.</p><div class="badge-row"><div class="badge">Repository: Production</div><div class="badge">Workflow: witty-smoke</div><div class="badge">Microsoft Login Required</div></div></div><div class="user-card"><strong id="signedInName">Checking Microsoft login...</strong><span id="signedInDetails">Loading role and access...</span><div class="user-actions"><button class="secondary" onclick="window.location.href='/logout'">Sign Out</button><button class="secondary" onclick="loadDashboard()">Refresh</button></div></div></div>
+  <div class="status" id="statusBox">Loading dashboard...</div>
+  <div class="card" style="margin-bottom:18px"><div class="section-title"><h2>Dashboard Controls</h2><span id="viewLabel">Secure View</span></div><div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:12px"><div><div class="metric-label">Report Date</div><input type="date" id="reportDate" /></div><div><div class="metric-label">Midday Cutoff</div><input type="time" id="cutoffTime" value="13:00" /></div><div><div class="metric-label">View Mode</div><select id="viewMode"><option value="eod">End of Day</option><option value="midday">1 PM / Midday Cutoff</option></select></div><div id="supervisorActions"><div class="metric-label">Supervisor Actions</div><div class="controls" style="margin-top:0"><button class="amber" onclick="exportSummaryCsv()">Export Summary</button><button class="secondary" onclick="clearCloudData()">Clear Data</button><button class="secondary" onclick="window.print()">Print</button></div></div></div></div>
+  <div class="grid uploads" id="uploadSection"><div class="card"><div class="section-title"><h2>1. Completed Tickets</h2><span>Supervisor/Admin</span></div><div class="upload-box"><label for="completedFile">Completed tickets CSV</label><p>Used for completed locates, COTP, ticket mix, work mix, and locator production.</p><input type="file" id="completedFile" accept=".csv,text/csv" /><div class="mapping" id="completedMapping">No file uploaded.</div></div></div><div class="card"><div class="section-title"><h2>2. Open Queue</h2><span>Supervisor/Admin</span></div><div class="upload-box"><label for="openFile">Open / pending queue CSV</label><p>Used for open queue, late/at-risk tickets, and open tickets by locator.</p><input type="file" id="openFile" accept=".csv,text/csv" /><div class="mapping" id="openMapping">No file uploaded.</div></div></div><div class="card"><div class="section-title"><h2>3. Timeclock</h2><span>Supervisor/Admin</span></div><div class="upload-box"><label for="timeFile">Timeclock CSV</label><p>Used for total hours and TPH.</p><input type="file" id="timeFile" accept=".csv,text/csv" /><div class="mapping" id="timeMapping">No file uploaded.</div></div></div></div>
+  <div class="grid cards"><div class="card"><div class="metric-label">Completed Locates</div><div class="metric-value" id="completedLocates">0</div><div class="metric-sub">Unique completed tickets</div><div class="trend mid" id="completedTrend">Awaiting data</div></div><div class="card"><div class="metric-label">Open Queue</div><div class="metric-value" id="openQueue">0</div><div class="metric-sub">Unique open tickets</div><div class="trend mid" id="openTrend">Awaiting data</div></div><div class="card"><div class="metric-label">Total Hours</div><div class="metric-value" id="totalHours">0.00</div><div class="metric-sub">Timeclock hours</div><div class="trend mid" id="hoursTrend">Awaiting timeclock</div></div><div class="card"><div class="metric-label">TPH</div><div class="metric-value" id="tph">0.00</div><div class="metric-sub">Completed locates divided by hours</div><div class="trend mid" id="tphTrend">Auto calculated</div></div><div class="card"><div class="metric-label">COTP</div><div class="metric-value" id="cotp">0.0%</div><div class="metric-sub" id="cotpSub">Uses Completed Late field</div><div class="trend mid" id="cotpTrend">Awaiting data</div></div><div class="card"><div class="metric-label">Late / At Risk</div><div class="metric-value" id="lateRisk">0</div><div class="metric-sub">Open tickets late or approaching due time</div><div class="trend warn" id="lateTrend">Supervisor review</div></div></div>
+  <div class="grid split"><div class="card"><div class="section-title"><h2 id="productionTitle">Locator Production</h2><span>Completed locates</span></div><div class="chart-wrap" id="productionChart"></div></div><div class="card"><div class="section-title"><h2>CAW Marking Compliance</h2><span>Daily audit focus</span></div><table><thead><tr><th>Requirement</th><th>Status</th><th>What to Check</th></tr></thead><tbody><tr><td>Main size/material</td><td><span class="pill good">Required</span></td><td>Every main locate should show CAW, size, and material.</td></tr><tr><td>Service label</td><td><span class="pill good">Required</span></td><td>All services should be labeled SVC.</td></tr><tr><td>High-profile main</td><td><span class="pill warn">12&quot;+</span></td><td>12&quot; or larger mains should be marked as high-profile.</td></tr><tr><td>High-profile marking style</td><td><span class="pill warn">Audit</span></td><td>Use the |.| style matching pipe size, with the dot on centerline.</td></tr></tbody></table></div></div>
+  <div class="grid triple"><div class="card"><div class="section-title"><h2>Ticket Type Breakdown</h2><span>Request type</span></div><table><thead><tr><th>Ticket Type</th><th>Count</th></tr></thead><tbody id="ticketTypeTable"></tbody></table></div><div class="card"><div class="section-title"><h2>Work Type Breakdown</h2><span>Work type / remarks</span></div><table><thead><tr><th>Work Type</th><th>Count</th></tr></thead><tbody id="workTypeTable"></tbody></table></div><div class="card"><div class="section-title"><h2>Water / Sewer Risk Buckets</h2><span>Auto classified</span></div><table><thead><tr><th>Bucket</th><th>Count</th><th>Risk</th></tr></thead><tbody id="riskBucketTable"></tbody></table></div></div>
+  <div class="grid bottom"><div class="card"><div class="section-title"><h2 id="teamTableTitle">Team Production Table</h2><span>Bermex roster</span></div><table><thead><tr><th>Locator</th><th>Hours</th><th>Completed</th><th>TPH</th><th>Open Queue</th><th>Status</th></tr></thead><tbody id="locatorTable"></tbody></table></div><div class="card"><div class="section-title"><h2>Supervisor / Locator Focus</h2><span>What to review first</span></div><div class="focus-list" id="focusList"></div></div></div>
+  <div class="footer-note">Secure data flow: Microsoft login → Azure Function verifies user → API filters data by access role → dashboard displays allowed view only.</div>
 </div>
-
 <script>
-async function upload(inputId, type){
-  const file = document.getElementById(inputId).files[0];
-  if(!file) return;
-  setStatus("Uploading " + file.name + "...");
-  const csvText = await file.text();
-  const res = await fetch("/api/uploadData", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({type, filename:file.name, csvText})
-  });
-  const data = await res.json();
-  if(!res.ok){ setStatus("Upload failed: " + (data.error || res.statusText)); return; }
-  apply(data.summary);
-  setStatus(type + " uploaded: " + data.uploadedRows + " rows.");
-}
-document.getElementById("completedFile").addEventListener("change",()=>upload("completedFile","completed"));
-document.getElementById("openFile").addEventListener("change",()=>upload("openFile","open"));
-document.getElementById("timeFile").addEventListener("change",()=>upload("timeFile","time"));
-
-function setStatus(msg){document.getElementById("status").textContent=msg;}
-async function testApi(){
-  try{
-    const res=await fetch("/api/dashboard");
-    const data=await res.json();
-    setStatus("API working: " + data.message);
-    apply(data.summary);
-  }catch(e){setStatus("API failed: " + e.message);}
-}
-async function loadDashboard(){
-  try{
-    const res=await fetch("/api/dashboard");
-    const data=await res.json();
-    if(!res.ok){setStatus(data.error || "Load failed");return;}
-    apply(data.summary); setStatus(data.message || "Loaded.");
-  }catch(e){setStatus("Could not reach Azure Function API.");}
-}
-async function clearData(){
-  const res=await fetch("/api/clearData",{method:"POST"});
-  const data=await res.json();
-  apply(data.summary); setStatus("Data cleared.");
-}
-function apply(s){
-  s = s || empty();
-  document.getElementById("completed").textContent=s.completedCount||0;
-  document.getElementById("open").textContent=s.openCount||0;
-  document.getElementById("hours").textContent=Number(s.totalHours||0).toFixed(2);
-  document.getElementById("tph").textContent=Number(s.tph||0).toFixed(2);
-  document.getElementById("lateRisk").textContent=s.lateRisk||0;
-  document.getElementById("cotp").textContent=(s.cotpAvailable?Number(s.cotp||0).toFixed(1):"0.0")+"%";
-  document.getElementById("cotpHint").textContent=s.cotpAvailable?`${s.onTimeCompleted} on time / ${s.lateCompleted} late`:"Completed Late field";
-  rows("teamRows",(s.locatorRows||[]).map(p=>`<tr><td>${p.name}</td><td>${Number(p.hours||0).toFixed(2)}</td><td>${p.completed||0}</td><td>${Number(p.tph||0).toFixed(2)}</td><td>${p.openQueue||0}</td><td>${status(p)}</td></tr>`));
-  breakdown("ticketTypes",s.ticketTypes||{});
-  breakdown("workTypes",s.workTypes||{});
-}
-function status(p){
-  if(!p.completed && !p.hours) return '<span class="pill empty">No Data</span>';
-  if(p.tph>=1.5) return '<span class="pill good">Solid</span>';
-  return '<span class="pill warn">Watch</span>';
-}
-function rows(id, arr){document.getElementById(id).innerHTML=arr.join("") || '<tr><td colspan="6">No data</td></tr>'}
-function breakdown(id, obj){document.getElementById(id).innerHTML=Object.entries(obj).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join("") || '<tr><td colspan="2">No data</td></tr>'}
-function empty(){return {locatorRows:[]}}
-loadDashboard();
+let currentUser=null,currentSummary=null;function todayIso(){return new Date().toISOString().slice(0,10)}document.getElementById('reportDate').value=todayIso();function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function setStatus(m){document.getElementById('statusBox').innerHTML=escapeHtml(m)}
+async function loadUser(){try{const r=await fetch('/api/me'),d=await r.json();if(!r.ok||!d.user){window.location.href='/login';return}currentUser=d.user;document.getElementById('signedInName').textContent=currentUser.displayName||currentUser.email||'Signed In';document.getElementById('signedInDetails').textContent=`Email: ${currentUser.email||'unknown'} | Role: ${currentUser.role||'unknown'}${currentUser.locatorName?' | Locator: '+currentUser.locatorName:''}`;const sup=['admin','supervisor'].includes(currentUser.role);document.getElementById('uploadSection').classList.toggle('hidden',!sup);document.getElementById('supervisorActions').classList.toggle('hidden',!sup);document.getElementById('viewLabel').textContent=sup?'Supervisor Team View':'Locator Personal View';document.getElementById('productionTitle').textContent=sup?'Locator Production':'My Production';document.getElementById('teamTableTitle').textContent=sup?'Team Production Table':'My Production Table'}catch(e){window.location.href='/login'}}
+async function uploadFile(inputId,type,mappingId){const file=document.getElementById(inputId).files[0];if(!file)return;setStatus(`Uploading ${file.name}...`);const csvText=await file.text();try{const r=await fetch('/api/uploadData',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,filename:file.name,csvText,reportDate:document.getElementById('reportDate').value,viewMode:document.getElementById('viewMode').value,cutoffTime:document.getElementById('cutoffTime').value})});const d=await r.json();if(!r.ok){setStatus(`Upload failed: ${d.error||r.statusText}`);return}document.getElementById(mappingId).innerHTML=`<strong>${escapeHtml(file.name)}</strong><br>${d.uploadedRows||0} rows uploaded`;applySummary(d.summary);setStatus(`Uploaded ${file.name} and refreshed dashboard.`)}catch(e){setStatus('Could not reach the Azure Function API. Confirm the app is deployed with the api folder.')}}
+async function loadDashboard(){try{const p=new URLSearchParams({reportDate:document.getElementById('reportDate').value,viewMode:document.getElementById('viewMode').value,cutoffTime:document.getElementById('cutoffTime').value});const r=await fetch('/api/dashboard?'+p.toString()),d=await r.json();if(!r.ok){setStatus(d.error||'Unable to load dashboard.');return}if(d.user)currentUser=d.user;applySummary(d.summary);setStatus(d.message||'Dashboard loaded.')}catch(e){setStatus('Could not reach the Azure Function API. Confirm the app is deployed with the api folder.')}}
+async function clearCloudData(){if(!confirm('Clear stored dashboard data?'))return;try{const r=await fetch('/api/clearData',{method:'POST'}),d=await r.json();if(r.ok){applySummary(d.summary);setStatus('Dashboard data cleared.')}else setStatus(d.error||'Clear failed.')}catch(e){setStatus('Could not reach the Azure Function API.')}}
+document.getElementById('completedFile').addEventListener('change',()=>uploadFile('completedFile','completed','completedMapping'));document.getElementById('openFile').addEventListener('change',()=>uploadFile('openFile','open','openMapping'));document.getElementById('timeFile').addEventListener('change',()=>uploadFile('timeFile','time','timeMapping'));document.getElementById('viewMode').addEventListener('change',loadDashboard);document.getElementById('cutoffTime').addEventListener('change',loadDashboard);document.getElementById('reportDate').addEventListener('change',loadDashboard);
+function emptySummary(){return{completedCount:0,openCount:0,totalHours:0,tph:0,cotp:0,cotpAvailable:false,onTimeCompleted:0,lateCompleted:0,lateRisk:0,ticketTypes:{},workTypes:{},riskBuckets:{},locatorRows:[]}}function applySummary(s){currentSummary=s||emptySummary();s=currentSummary;document.getElementById('completedLocates').textContent=s.completedCount||0;document.getElementById('openQueue').textContent=s.openCount||0;document.getElementById('totalHours').textContent=Number(s.totalHours||0).toFixed(2);document.getElementById('tph').textContent=Number(s.tph||0).toFixed(2);document.getElementById('lateRisk').textContent=s.lateRisk||0;if(s.cotpAvailable){document.getElementById('cotp').textContent=Number(s.cotp||0).toFixed(1)+'%';document.getElementById('cotpSub').textContent=`${s.onTimeCompleted||0} on time and ${s.lateCompleted||0} late`;document.getElementById('cotpTrend').textContent=`${s.lateCompleted||0} marked late`;document.getElementById('cotpTrend').className='trend '+((s.cotp||0)>=95?'up':(s.cotp||0)>=90?'warn':'down')}else{document.getElementById('cotp').textContent='0.0%';document.getElementById('cotpSub').textContent='Completed Late field not detected yet';document.getElementById('cotpTrend').textContent='Awaiting data';document.getElementById('cotpTrend').className='trend mid'}document.getElementById('completedTrend').textContent=s.completedCount?'Loaded':'Awaiting data';document.getElementById('openTrend').textContent=s.openCount?'Loaded':'Awaiting data';document.getElementById('hoursTrend').textContent=s.totalHours?'Loaded':'Awaiting timeclock';const t=document.getElementById('tphTrend');t.textContent=s.tph>=2?'Strong pace':s.tph>=1.5?'Solid pace':s.tph>0?'Review pace':'Auto calculated';t.className='trend '+(s.tph>=1.5?'up':s.tph>0?'warn':'mid');renderProductionChart(s.locatorRows||[]);renderLocatorTable(s.locatorRows||[]);renderBreakdownTable('ticketTypeTable',s.ticketTypes||{},'No ticket type data.');renderBreakdownTable('workTypeTable',s.workTypes||{},'No work type data.');renderRiskBucketTable(s.riskBuckets||{});renderFocus(s)}
+function statusForTPH(tph,completed,hours){if(completed===0&&hours===0)return['No Data','empty'];if(tph>=2)return['Strong','good'];if(tph>=1.5)return['Solid','good'];if(tph>=1.2)return['Watch','warn'];return['Needs Coaching','bad']}function renderProductionChart(rows){const w=document.getElementById('productionChart');w.innerHTML='';const display=(rows.length?rows:[]).slice().sort((a,b)=>(b.completed||0)-(a.completed||0));if(!display.length){w.innerHTML='<div class="pill empty">No production data yet.</div>';return}const max=Math.max(1,...display.map(i=>i.completed||0));display.forEach(item=>{const h=Math.max(18,((item.completed||0)/max)*235),first=(item.name||'').split(' ')[0],col=document.createElement('div');col.className='bar-col';col.innerHTML=`<div class="bar-value">${item.completed||0}</div><div class="bar" style="height:${h}px"></div><div class="bar-label" title="${escapeHtml(item.name)}">${escapeHtml(first)}</div>`;w.appendChild(col)})}function renderLocatorTable(rows){const tb=document.getElementById('locatorTable');if(!rows.length){tb.innerHTML='<tr><td colspan="6"><span class="pill empty">No locator data yet.</span></td></tr>';return}tb.innerHTML='';rows.forEach(p=>{const [label,cls]=statusForTPH(p.tph||0,p.completed||0,p.hours||0),tr=document.createElement('tr');tr.innerHTML=`<td>${escapeHtml(p.name)}</td><td>${Number(p.hours||0).toFixed(2)}</td><td>${p.completed||0}</td><td>${Number(p.tph||0).toFixed(2)}</td><td>${p.openQueue||0}</td><td><span class="pill ${cls}">${label}</span></td>`;tb.appendChild(tr)})}function renderBreakdownTable(id,counts,emptyText){const tb=document.getElementById(id),entries=Object.entries(counts||{});if(!entries.length){tb.innerHTML=`<tr><td colspan="2"><span class="pill empty">${escapeHtml(emptyText)}</span></td></tr>`;return}tb.innerHTML=entries.map(([n,c])=>`<tr><td>${escapeHtml(n)}</td><td>${c}</td></tr>`).join('')}function renderRiskBucketTable(counts){const tb=document.getElementById('riskBucketTable'),b=[['Water Main','High','warn'],['Water Service','Medium','info'],['Sewer Main','High','warn'],['Force Main','Critical','bad'],['General Excavation','Medium','info'],['See Remarks','Review','warn'],['Unclassified','Review','empty']];tb.innerHTML=b.map(([n,r,cls])=>`<tr><td>${n}</td><td>${counts[n]||0}</td><td><span class="pill ${cls}">${r}</span></td></tr>`).join('')}function renderFocus(s){const list=document.getElementById('focusList'),rows=s.locatorRows||[],sup=currentUser&&['admin','supervisor'].includes(currentUser.role),topOpen=rows.slice().sort((a,b)=>(b.openQueue||0)-(a.openQueue||0))[0],topCompleted=rows.slice().sort((a,b)=>(b.completed||0)-(a.completed||0))[0],items=[[sup?'Protect team COTP':'Protect your COTP',s.cotpAvailable?`COTP is ${Number(s.cotp||0).toFixed(1)}% with ${s.lateCompleted||0} late.`:'Completed Late field was not detected.'],[sup?'Watch open queue':'Watch your queue',`${s.openCount||0} open tickets loaded. ${s.lateRisk||0} are late or at-risk.`],[sup?'Top production':'Completed work',topCompleted&&topCompleted.completed?`${topCompleted.name} completed ${topCompleted.completed} tickets.`:'Completed data will populate after upload.'],[sup?'Queue load':'Open work',topOpen&&topOpen.openQueue?`${topOpen.name} has ${topOpen.openQueue} open tickets.`:'Open queue data will populate after upload.'],['CAW audit reminder','Review 12&quot;+ mains, SVC labels, and main size/material documentation.']];list.innerHTML=items.map(([t,b])=>`<div class="focus-item"><strong>${t}</strong><span>${b}</span></div>`).join('')}function csvEscape(v){const s=String(v??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}function exportSummaryCsv(){const s=currentSummary||emptySummary(),lines=[];lines.push('Metric,Value');lines.push(`Completed Locates,${s.completedCount||0}`);lines.push(`Open Queue,${s.openCount||0}`);lines.push(`Total Hours,${Number(s.totalHours||0).toFixed(2)}`);lines.push(`TPH,${Number(s.tph||0).toFixed(2)}`);lines.push(`COTP,${s.cotpAvailable?Number(s.cotp||0).toFixed(1)+'%':'N/A'}`);lines.push('');lines.push('Locator,Hours,Completed,TPH,Open Queue');(s.locatorRows||[]).forEach(p=>lines.push([csvEscape(p.name),Number(p.hours||0).toFixed(2),p.completed||0,Number(p.tph||0).toFixed(2),p.openQueue||0].join(',')));const blob=new Blob([lines.join('\n')],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='bermex_dashboard_summary.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}async function boot(){await loadUser();await loadDashboard()}boot();
 </script>
 </body>
 </html>

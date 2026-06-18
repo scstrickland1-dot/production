@@ -1,6 +1,8 @@
 {
   "name": "bermex-dashboard-api",
   "version": "1.0.0",
+  "description": "Bermex Dashboard API with Microsoft login",
+  "main": "index.js",
   "scripts": {
     "start": "func start"
   },
