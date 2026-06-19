@@ -1,0 +1,4 @@
+Ticket ID,Assigned Locator,Ticket Status,Request Type,Work Type,Due Date,Completed Date,Completed Late,Remarks
+AL-1001,Adam Kusiak,Completed,Normal,Water Main Install,2026-07-01 16:00,2026-07-01 12:30,0,CAW 8 inch PVC main
+AL-1002,Eber Serrano,Completed,Emergency,Water Service Repair,2026-07-01 12:00,2026-07-01 11:10,0,SVC repair
+AL-1003,Patrick Davis,Completed,Normal,Sewer Main,2026-07-01 15:00,2026-07-01 15:45,1,Gravity sewer

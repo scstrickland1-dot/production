@@ -1,0 +1,26 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "REQUIRE_ACCESS_LIST": "false",
+    "AZURE_STORAGE_CONNECTION_STRING": "",
+    "DASHBOARD_CONTAINER": "bermex-dashboard",
+    "DASHBOARD_BLOB": "alabama-ohio-dashboard.json",
+    "UTILISPHERE_BASE_URL": "",
+    "UTILISPHERE_API_TOKEN": "",
+    "UTILISPHERE_TICKETS_PATH": "",
+    "UTILISPHERE_COMPLETED_PATH": "",
+    "UTILISPHERE_OPEN_PATH": "",
+    "UTILISPHERE_TIMECLOCK_PATH": "",
+    "UTILISPHERE_PROJECT_FIELD": "",
+    "UTILISPHERE_ALABAMA_VALUE": "",
+    "UTILISPHERE_OHIO_VALUE": "",
+    "UTILISPHERE_AUTH_HEADER": "Authorization",
+    "UTILISPHERE_AUTH_SCHEME": "Bearer",
+    "UTILISPHERE_RESULTS_PATH": "",
+    "UTILISPHERE_STATUS_FIELD": "",
+    "UTILISPHERE_COMPLETED_STATUSES": "Completed,Closed,Done",
+    "UTILISPHERE_OPEN_STATUSES": "Open,Pending,Assigned,In Progress,Received"
+  }
+}

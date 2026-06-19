@@ -1,0 +1,15 @@
+{
+  "name": "bermex-alabama-ohio-dashboard-api",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Bermex Alabama and Ohio dashboard API for Azure Static Web Apps",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "func start",
+    "check": "node --check src/index.js"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.7.2",
+    "@azure/storage-blob": "^12.27.0"
+  }
+}
