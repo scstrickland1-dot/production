@@ -1,0 +1,6 @@
+require("./functions/me");
+require("./functions/status");
+require("./functions/dashboard");
+require("./functions/syncUtilisphere");
+require("./functions/uploadData");
+require("./functions/clearData");

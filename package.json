@@ -1,0 +1,85 @@
+const EMPTY_PROJECT = () => ({
+  completed: [],
+  open: [],
+  time: [],
+  source: "none",
+  lastRefresh: null,
+  lastError: null,
+  files: {}
+});
+
+let memoryStore = {
+  version: 2,
+  updatedAt: null,
+  projects: {
+    alabama: EMPTY_PROJECT(),
+    ohio: EMPTY_PROJECT()
+  }
+};
+
+function ensureStore(store) {
+  const next = store && typeof store === "object" ? store : {};
+  next.version = 2;
+  next.updatedAt = next.updatedAt || null;
+  next.projects = next.projects || {};
+  next.projects.alabama = { ...EMPTY_PROJECT(), ...(next.projects.alabama || {}) };
+  next.projects.ohio = { ...EMPTY_PROJECT(), ...(next.projects.ohio || {}) };
+  return next;
+}
+
+async function getBlobClient() {
+  const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+  if (!connectionString) return null;
+
+  const { BlobServiceClient } = require("@azure/storage-blob");
+  const containerName = process.env.DASHBOARD_CONTAINER || "bermex-dashboard";
+  const blobName = process.env.DASHBOARD_BLOB || "alabama-ohio-dashboard.json";
+
+  const service = BlobServiceClient.fromConnectionString(connectionString);
+  const container = service.getContainerClient(containerName);
+  await container.createIfNotExists();
+  return container.getBlockBlobClient(blobName);
+}
+
+async function loadStore() {
+  const blob = await getBlobClient();
+  if (!blob) return ensureStore(memoryStore);
+
+  try {
+    if (!(await blob.exists())) return ensureStore(memoryStore);
+    const buffer = await blob.downloadToBuffer();
+    return ensureStore(JSON.parse(buffer.toString("utf8")));
+  } catch {
+    return ensureStore(memoryStore);
+  }
+}
+
+async function saveStore(store) {
+  const next = ensureStore(store);
+  next.updatedAt = new Date().toISOString();
+
+  const blob = await getBlobClient();
+  if (!blob) {
+    memoryStore = next;
+    return next;
+  }
+
+  const payload = Buffer.from(JSON.stringify(next), "utf8");
+  await blob.uploadData(payload, {
+    blobHTTPHeaders: { blobContentType: "application/json" }
+  });
+  return next;
+}
+
+async function clearProject(projectId) {
+  const store = await loadStore();
+  if (projectId === "all") {
+    store.projects.alabama = EMPTY_PROJECT();
+    store.projects.ohio = EMPTY_PROJECT();
+  } else if (store.projects[projectId]) {
+    store.projects[projectId] = EMPTY_PROJECT();
+  }
+  return saveStore(store);
+}
+
+module.exports = { loadStore, saveStore, clearProject, ensureStore };

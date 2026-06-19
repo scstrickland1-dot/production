@@ -1,0 +1,318 @@
+const { PROJECTS, getProjectIds } = require("./projects");
+
+function normalizeHeader(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function findColumn(rows, envName, candidates) {
+  if (!rows?.length) return null;
+  const headers = Object.keys(rows[0]);
+  const configured = process.env[envName];
+  if (configured && headers.includes(configured)) return configured;
+
+  const normalized = headers.map(header => [header, normalizeHeader(header)]);
+  for (const candidate of candidates) {
+    const target = normalizeHeader(candidate);
+    const exact = normalized.find(([, value]) => value === target);
+    if (exact) return exact[0];
+  }
+  for (const candidate of candidates) {
+    const target = normalizeHeader(candidate);
+    const contains = normalized.find(([, value]) => value.includes(target) || target.includes(value));
+    if (contains) return contains[0];
+  }
+  return null;
+}
+
+function ticketMap(rows) {
+  return {
+    id: findColumn(rows, "UTILISPHERE_ID_FIELD", ["ticket id", "ticket number", "ticket no", "ticket", "request number", "work item id", "notification number", "id"]),
+    locator: findColumn(rows, "UTILISPHERE_LOCATOR_FIELD", ["assigned locator", "assigned to", "assigned user", "assignee", "locator", "technician", "employee", "completed by", "closed by", "name"]),
+    status: findColumn(rows, "UTILISPHERE_STATUS_FIELD", ["status", "ticket status", "work item status", "state"]),
+    requestType: findColumn(rows, "UTILISPHERE_REQUEST_TYPE_FIELD", ["request type", "ticket type", "call type", "notice type", "type"]),
+    workType: findColumn(rows, "UTILISPHERE_WORK_TYPE_FIELD", ["work type", "nature of work", "work description", "activity", "excavation type", "job type"]),
+    dueDate: findColumn(rows, "UTILISPHERE_DUE_FIELD", ["due date", "due datetime", "due time", "response due", "locate due", "completion due date", "required by"]),
+    completedLate: findColumn(rows, "UTILISPHERE_COMPLETED_LATE_FIELD", ["completed late", "late completed", "completedlate", "is late", "was late", "late", "late flag", "islate"]),
+    completedDate: findColumn(rows, "UTILISPHERE_COMPLETED_DATE_FIELD", ["completed date", "completed at", "completion date", "closed date", "date completed"]),
+    remarks: findColumn(rows, "UTILISPHERE_REMARKS_FIELD", ["remarks", "notes", "description", "comments", "work remarks", "ticket remarks"])
+  };
+}
+
+function timeMap(rows) {
+  return {
+    name: findColumn(rows, "UTILISPHERE_TIMECLOCK_NAME_FIELD", ["employee", "employee name", "name", "user", "technician", "locator", "worker"]),
+    totalHours: findColumn(rows, "UTILISPHERE_HOURS_FIELD", ["total hours", "hours", "regular hours", "worked hours", "duration", "total duration", "shift hours"]),
+    clockIn: findColumn(rows, "UTILISPHERE_CLOCK_IN_FIELD", ["clock in", "clockin", "start time", "start", "in time", "time in"]),
+    clockOut: findColumn(rows, "UTILISPHERE_CLOCK_OUT_FIELD", ["clock out", "clockout", "end time", "end", "out time", "time out"])
+  };
+}
+
+function uniqueRows(rows, idColumn) {
+  if (!Array.isArray(rows)) return [];
+  if (!idColumn) return rows;
+  const seen = new Set();
+  const output = [];
+
+  for (const row of rows) {
+    const id = String(row[idColumn] ?? "").trim();
+    if (!id || !seen.has(id)) {
+      if (id) seen.add(id);
+      output.push(row);
+    }
+  }
+  return output;
+}
+
+function parseBoolean(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (["1", "true", "yes", "y", "late", "t"].includes(normalized)) return true;
+  if (["0", "false", "no", "n", "on time", "ontime", "f"].includes(normalized)) return false;
+  return null;
+}
+
+function parseNumber(value) {
+  const number = Number(String(value ?? "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(number) ? number : 0;
+}
+
+function parseDate(value, reportDate = null) {
+  if (!value) return null;
+  const text = String(value).trim();
+  const direct = new Date(text);
+  if (!Number.isNaN(direct.getTime())) return direct;
+
+  const timeOnly = text.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i);
+  if (timeOnly && reportDate) {
+    let hour = Number(timeOnly[1]);
+    const minute = Number(timeOnly[2]);
+    const meridiem = timeOnly[4]?.toUpperCase();
+    if (meridiem === "PM" && hour < 12) hour += 12;
+    if (meridiem === "AM" && hour === 12) hour = 0;
+    const date = new Date(`${reportDate}T00:00:00`);
+    date.setHours(hour, minute, Number(timeOnly[3] || 0), 0);
+    return date;
+  }
+  return null;
+}
+
+function cleanName(value) {
+  return String(value ?? "").trim().replace(/\s+/g, " ") || "Unassigned";
+}
+
+function countBy(rows, column, limit = 15) {
+  const counts = {};
+  if (!column) return counts;
+  for (const row of rows) {
+    const value = String(row[column] ?? "Blank").trim() || "Blank";
+    counts[value] = (counts[value] || 0) + 1;
+  }
+  return Object.fromEntries(Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, limit));
+}
+
+function mergeCounts(target, source) {
+  for (const [key, value] of Object.entries(source || {})) {
+    target[key] = (target[key] || 0) + Number(value || 0);
+  }
+  return target;
+}
+
+function classifyRisk(row, map) {
+  const combined = [
+    map.workType ? row[map.workType] : "",
+    map.remarks ? row[map.remarks] : "",
+    map.requestType ? row[map.requestType] : ""
+  ].join(" ").toLowerCase();
+
+  if (combined.includes("force")) return "Force Main";
+  if (combined.includes("sewer") || combined.includes("manhole") || combined.includes("sanitary")) return "Sewer Main";
+  if (combined.includes("water") && (combined.includes("service") || combined.includes("svc"))) return "Water Service";
+  if (combined.includes("water") && (combined.includes("main") || combined.includes("repair") || combined.includes("install"))) return "Water Main";
+  if (combined.includes("see remarks") || combined.includes("remarks")) return "See Remarks";
+  if (combined.includes("fence") || combined.includes("grading") || combined.includes("landscap") || combined.includes("pool") || combined.includes("road") || combined.includes("wall")) return "General Excavation";
+  return "Unclassified";
+}
+
+function calculateHours(rows, map, options = {}) {
+  const byName = {};
+  const reportDate = options.reportDate || new Date().toISOString().slice(0, 10);
+  const cutoff = parseDate(options.cutoffTime || "13:00", reportDate);
+  const midday = options.viewMode === "midday";
+
+  if (!rows?.length || !map.name) return { totalHours: 0, byName };
+
+  for (const row of rows) {
+    const name = cleanName(row[map.name]);
+    let hours = 0;
+
+    if (map.totalHours && String(row[map.totalHours] ?? "").trim() !== "") {
+      hours = parseNumber(row[map.totalHours]);
+    } else if (map.clockIn) {
+      const clockIn = parseDate(row[map.clockIn], reportDate);
+      let clockOut = map.clockOut ? parseDate(row[map.clockOut], reportDate) : null;
+      if (midday && (!clockOut || (cutoff && clockOut > cutoff))) clockOut = cutoff;
+      if (clockIn && clockOut && clockOut > clockIn) hours = (clockOut - clockIn) / 3600000;
+    }
+
+    byName[name] = (byName[name] || 0) + hours;
+  }
+
+  return {
+    totalHours: Object.values(byName).reduce((sum, value) => sum + value, 0),
+    byName
+  };
+}
+
+function isLateOrAtRisk(row, map) {
+  const due = map.dueDate ? parseDate(row[map.dueDate]) : null;
+  if (!due) return false;
+  return (due.getTime() - Date.now()) / 3600000 < 4;
+}
+
+function calculateProject(projectId, data = {}, options = {}) {
+  const completedRows = data.completed || [];
+  const openRows = data.open || [];
+  const timeRows = data.time || [];
+
+  const completedMap = ticketMap(completedRows);
+  const openMap = ticketMap(openRows);
+  const hoursMap = timeMap(timeRows);
+  const completed = uniqueRows(completedRows, completedMap.id);
+  const open = uniqueRows(openRows, openMap.id);
+  const hours = calculateHours(timeRows, hoursMap, options);
+
+  let onTimeCompleted = 0;
+  let lateCompleted = 0;
+  let cotpAvailable = false;
+  if (completedMap.completedLate) {
+    for (const row of completed) {
+      const late = parseBoolean(row[completedMap.completedLate]);
+      if (late === true) {
+        lateCompleted++;
+        cotpAvailable = true;
+      } else if (late === false) {
+        onTimeCompleted++;
+        cotpAvailable = true;
+      }
+    }
+  }
+
+  const completedByLocator = {};
+  const openByLocator = {};
+  if (completedMap.locator) {
+    for (const row of completed) {
+      const name = cleanName(row[completedMap.locator]);
+      completedByLocator[name] = (completedByLocator[name] || 0) + 1;
+    }
+  }
+  if (openMap.locator) {
+    for (const row of open) {
+      const name = cleanName(row[openMap.locator]);
+      openByLocator[name] = (openByLocator[name] || 0) + 1;
+    }
+  }
+
+  const locatorNames = new Set([
+    ...Object.keys(completedByLocator),
+    ...Object.keys(openByLocator),
+    ...Object.keys(hours.byName)
+  ]);
+
+  const locatorRows = [...locatorNames].sort().map(name => {
+    const completedCount = completedByLocator[name] || 0;
+    const totalHours = hours.byName[name] || 0;
+    return {
+      projectId,
+      projectName: PROJECTS[projectId]?.displayName || projectId,
+      name,
+      completed: completedCount,
+      openQueue: openByLocator[name] || 0,
+      hours: totalHours,
+      tph: totalHours > 0 ? completedCount / totalHours : 0
+    };
+  });
+
+  const riskBuckets = {};
+  for (const row of completed) {
+    const bucket = classifyRisk(row, completedMap);
+    riskBuckets[bucket] = (riskBuckets[bucket] || 0) + 1;
+  }
+
+  const denominator = onTimeCompleted + lateCompleted;
+  const totalHours = hours.totalHours;
+  const completedCount = completed.length;
+
+  return {
+    projectId,
+    projectName: PROJECTS[projectId]?.displayName || projectId,
+    source: data.source || "none",
+    lastRefresh: data.lastRefresh || null,
+    lastError: data.lastError || null,
+    completedCount,
+    openCount: open.length,
+    totalHours,
+    tph: totalHours > 0 ? completedCount / totalHours : 0,
+    cotpAvailable,
+    onTimeCompleted,
+    lateCompleted,
+    cotp: cotpAvailable && denominator > 0 ? (onTimeCompleted / denominator) * 100 : 0,
+    lateRisk: open.filter(row => isLateOrAtRisk(row, openMap)).length,
+    ticketTypes: countBy(completed, completedMap.requestType),
+    workTypes: countBy(completed, completedMap.workType),
+    riskBuckets,
+    locatorRows,
+    detectedColumns: { completed: completedMap, open: openMap, time: hoursMap }
+  };
+}
+
+function combineProjects(projectSummaries) {
+  const combined = {
+    projectId: "all",
+    projectName: "All Projects",
+    source: "mixed",
+    lastRefresh: projectSummaries.map(item => item.lastRefresh).filter(Boolean).sort().at(-1) || null,
+    lastError: projectSummaries.map(item => item.lastError).filter(Boolean).join(" | ") || null,
+    completedCount: 0,
+    openCount: 0,
+    totalHours: 0,
+    tph: 0,
+    cotpAvailable: false,
+    onTimeCompleted: 0,
+    lateCompleted: 0,
+    cotp: 0,
+    lateRisk: 0,
+    ticketTypes: {},
+    workTypes: {},
+    riskBuckets: {},
+    locatorRows: [],
+    projectSummaries
+  };
+
+  for (const summary of projectSummaries) {
+    combined.completedCount += summary.completedCount;
+    combined.openCount += summary.openCount;
+    combined.totalHours += summary.totalHours;
+    combined.onTimeCompleted += summary.onTimeCompleted;
+    combined.lateCompleted += summary.lateCompleted;
+    combined.lateRisk += summary.lateRisk;
+    combined.cotpAvailable ||= summary.cotpAvailable;
+    mergeCounts(combined.ticketTypes, summary.ticketTypes);
+    mergeCounts(combined.workTypes, summary.workTypes);
+    mergeCounts(combined.riskBuckets, summary.riskBuckets);
+    combined.locatorRows.push(...summary.locatorRows);
+  }
+
+  combined.tph = combined.totalHours > 0 ? combined.completedCount / combined.totalHours : 0;
+  const denominator = combined.onTimeCompleted + combined.lateCompleted;
+  combined.cotp = combined.cotpAvailable && denominator > 0 ? (combined.onTimeCompleted / denominator) * 100 : 0;
+  return combined;
+}
+
+function calculateDashboard(store, projectId, options = {}) {
+  if (projectId === "all") {
+    const summaries = getProjectIds().map(id => calculateProject(id, store.projects[id], options));
+    return combineProjects(summaries);
+  }
+  return calculateProject(projectId, store.projects[projectId], options);
+}
+
+module.exports = { calculateDashboard, calculateProject, combineProjects };

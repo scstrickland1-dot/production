@@ -1,0 +1,213 @@
+const { getProject, getProjectFilter } = require("./projects");
+
+function env(name, fallback = "") {
+  const value = process.env[name];
+  return value === undefined || value === null ? fallback : String(value).trim();
+}
+
+function isConfigured() {
+  const hasBase = Boolean(env("UTILISPHERE_BASE_URL"));
+  const hasToken = Boolean(env("UTILISPHERE_API_TOKEN"));
+  const hasAnyPath = Boolean(
+    env("UTILISPHERE_TICKETS_PATH") ||
+    env("UTILISPHERE_COMPLETED_PATH") ||
+    env("UTILISPHERE_OPEN_PATH")
+  );
+  return hasBase && hasToken && hasAnyPath;
+}
+
+function configurationStatus() {
+  const missing = [];
+  if (!env("UTILISPHERE_BASE_URL")) missing.push("UTILISPHERE_BASE_URL");
+  if (!env("UTILISPHERE_API_TOKEN")) missing.push("UTILISPHERE_API_TOKEN");
+  if (!env("UTILISPHERE_TICKETS_PATH") && !env("UTILISPHERE_COMPLETED_PATH") && !env("UTILISPHERE_OPEN_PATH")) {
+    missing.push("UTILISPHERE_TICKETS_PATH or completed/open paths");
+  }
+  if (!env("UTILISPHERE_PROJECT_FIELD")) missing.push("UTILISPHERE_PROJECT_FIELD");
+  if (!env("UTILISPHERE_ALABAMA_VALUE")) missing.push("UTILISPHERE_ALABAMA_VALUE");
+  if (!env("UTILISPHERE_OHIO_VALUE")) missing.push("UTILISPHERE_OHIO_VALUE");
+
+  return {
+    configured: missing.length === 0,
+    missing,
+    baseUrlConfigured: Boolean(env("UTILISPHERE_BASE_URL")),
+    tokenConfigured: Boolean(env("UTILISPHERE_API_TOKEN")),
+    projectField: env("UTILISPHERE_PROJECT_FIELD") || null,
+    ticketsPathConfigured: Boolean(env("UTILISPHERE_TICKETS_PATH")),
+    completedPathConfigured: Boolean(env("UTILISPHERE_COMPLETED_PATH")),
+    openPathConfigured: Boolean(env("UTILISPHERE_OPEN_PATH")),
+    timeclockPathConfigured: Boolean(env("UTILISPHERE_TIMECLOCK_PATH"))
+  };
+}
+
+function buildUrl(path, projectId, options = {}) {
+  const base = env("UTILISPHERE_BASE_URL").replace(/\/+$/, "");
+  const cleanPath = String(path || "").replace(/^\/+/, "");
+  const url = new URL(`${base}/${cleanPath}`);
+
+  const projectFilter = getProjectFilter(projectId);
+  if (projectFilter && projectFilter.field && projectFilter.value) {
+    url.searchParams.set(projectFilter.field, projectFilter.value);
+  }
+
+  const startParam = env("UTILISPHERE_START_DATE_PARAM");
+  const endParam = env("UTILISPHERE_END_DATE_PARAM");
+  if (options.startDate && startParam) url.searchParams.set(startParam, options.startDate);
+  if (options.endDate && endParam) url.searchParams.set(endParam, options.endDate);
+
+  const pageSizeParam = env("UTILISPHERE_PAGE_SIZE_PARAM");
+  const pageSize = env("UTILISPHERE_PAGE_SIZE");
+  if (pageSizeParam && pageSize) url.searchParams.set(pageSizeParam, pageSize);
+
+  return url;
+}
+
+function authHeaders() {
+  const token = env("UTILISPHERE_API_TOKEN");
+  const header = env("UTILISPHERE_AUTH_HEADER", "Authorization");
+  const scheme = env("UTILISPHERE_AUTH_SCHEME", "Bearer");
+  const value = scheme ? `${scheme} ${token}` : token;
+
+  return {
+    Accept: "application/json",
+    [header]: value
+  };
+}
+
+function readPath(object, dottedPath) {
+  if (!dottedPath) return undefined;
+  return dottedPath.split(".").reduce((value, key) => value?.[key], object);
+}
+
+function extractRecords(payload) {
+  if (Array.isArray(payload)) return payload;
+
+  const configuredPath = env("UTILISPHERE_RESULTS_PATH");
+  const configured = readPath(payload, configuredPath);
+  if (Array.isArray(configured)) return configured;
+
+  for (const key of ["items", "data", "results", "records", "tickets", "value", "workItems"]) {
+    if (Array.isArray(payload?.[key])) return payload[key];
+  }
+
+  for (const value of Object.values(payload || {})) {
+    if (Array.isArray(value)) return value;
+  }
+
+  return [];
+}
+
+async function fetchRecords(path, projectId, options = {}) {
+  if (!path) return [];
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Number(env("UTILISPHERE_TIMEOUT_MS", "30000")));
+
+  try {
+    const response = await fetch(buildUrl(path, projectId, options), {
+      method: "GET",
+      headers: authHeaders(),
+      signal: controller.signal
+    });
+
+    const rawText = await response.text();
+    let payload;
+    try {
+      payload = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      payload = { rawText };
+    }
+
+    if (!response.ok) {
+      const detail = payload?.message || payload?.error || rawText || response.statusText;
+      throw new Error(`UtiliSphere returned ${response.status}: ${detail}`);
+    }
+
+    return extractRecords(payload);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function normalize(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function findField(record, configuredName, candidates) {
+  if (!record || typeof record !== "object") return null;
+  if (configuredName && Object.prototype.hasOwnProperty.call(record, configuredName)) return configuredName;
+
+  const keys = Object.keys(record);
+  const normalized = keys.map(key => [key, normalize(key).replace(/[^a-z0-9]/g, "")]);
+
+  for (const candidate of candidates) {
+    const target = normalize(candidate).replace(/[^a-z0-9]/g, "");
+    const exact = normalized.find(([, value]) => value === target);
+    if (exact) return exact[0];
+  }
+  return null;
+}
+
+function splitTickets(records) {
+  if (!records.length) return { completed: [], open: [] };
+
+  const sample = records[0];
+  const statusField = findField(sample, env("UTILISPHERE_STATUS_FIELD"), ["status", "ticket status", "work item status", "state"]);
+  const completionField = findField(sample, env("UTILISPHERE_COMPLETED_DATE_FIELD"), ["completed date", "completed at", "completion date", "closed date", "date completed"]);
+
+  const completedStatuses = env("UTILISPHERE_COMPLETED_STATUSES", "Completed,Closed,Done")
+    .split(",").map(normalize).filter(Boolean);
+  const openStatuses = env("UTILISPHERE_OPEN_STATUSES", "Open,Pending,Assigned,In Progress,Received")
+    .split(",").map(normalize).filter(Boolean);
+
+  const completed = [];
+  const open = [];
+
+  for (const record of records) {
+    const status = statusField ? normalize(record[statusField]) : "";
+    const hasCompletion = completionField && String(record[completionField] ?? "").trim() !== "";
+
+    if (completedStatuses.includes(status) || hasCompletion) completed.push(record);
+    else if (openStatuses.includes(status) || !status) open.push(record);
+    else open.push(record);
+  }
+
+  return { completed, open };
+}
+
+async function fetchProjectData(projectId, options = {}) {
+  const project = getProject(projectId);
+  if (!project) throw new Error("Invalid project.");
+  if (!isConfigured()) throw new Error("UtiliSphere API settings are incomplete.");
+
+  const completedPath = env("UTILISPHERE_COMPLETED_PATH");
+  const openPath = env("UTILISPHERE_OPEN_PATH");
+  const ticketsPath = env("UTILISPHERE_TICKETS_PATH");
+  const timePath = env("UTILISPHERE_TIMECLOCK_PATH");
+
+  let completed = [];
+  let open = [];
+
+  if (completedPath || openPath) {
+    [completed, open] = await Promise.all([
+      fetchRecords(completedPath, projectId, options),
+      fetchRecords(openPath, projectId, options)
+    ]);
+  } else {
+    const tickets = await fetchRecords(ticketsPath, projectId, options);
+    ({ completed, open } = splitTickets(tickets));
+  }
+
+  const time = timePath ? await fetchRecords(timePath, projectId, options) : [];
+
+  return {
+    completed,
+    open,
+    time,
+    source: "utilisphere",
+    lastRefresh: new Date().toISOString(),
+    lastError: null
+  };
+}
+
+module.exports = { isConfigured, configurationStatus, fetchProjectData };
